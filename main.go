@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
+	uuid "github.com/satori/go.uuid"
 )
 
 func main() {
@@ -68,12 +69,21 @@ func main() {
 		for _, m := range resp.Messages {
 			go func(m *sqs.Message) {
 				defer wg.Done()
-
+				msgGroupUUID, err1 := uuid.NewV4()
+				msgDupeUUID, err2 := uuid.NewV4()
+				msgGroupString := msgGroupUUID.String()
+				msgDupeString := msgDupeUUID.String()
+				if err1 != nil || err2 != nil {
+					panic("Could not generate unique ids")
+				}
 				// write the message to the destination queue
+
 				smi := sqs.SendMessageInput{
-					MessageAttributes: m.MessageAttributes,
-					MessageBody:       m.Body,
-					QueueUrl:          dest,
+					MessageAttributes:      m.MessageAttributes,
+					MessageBody:            m.Body,
+					QueueUrl:               dest,
+					MessageGroupId:         &msgGroupString,
+					MessageDeduplicationId: &msgDupeString,
 				}
 
 				_, err := client.SendMessage(&smi)
